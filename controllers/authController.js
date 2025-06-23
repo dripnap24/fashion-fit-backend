@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
-// 🔐 Register
 exports.registerUser = async (req, res) => {
   const { name, username, email, password } = req.body;
 
@@ -15,7 +14,6 @@ exports.registerUser = async (req, res) => {
     if (usernameExists) return res.status(400).json({ message: 'Username already taken' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     const user = await User.create({
@@ -28,7 +26,12 @@ exports.registerUser = async (req, res) => {
     });
 
     const verifyUrl = `https://modenova.co.ke/verify.html?token=${verificationToken}&email=${email}`;
-    await sendEmail(email, '🔐 Verify Your Fashion Fit Email', `Click here to verify your account:\n${verifyUrl}`);
+    await sendEmail(
+      email,
+      '🔐 Verify Your Fashion Fit Email',
+      `Click the link below to verify your email:\n${verifyUrl}`
+    );
+    console.log(`✅ Verification email sent to ${email}`);
 
     res.status(201).json({
       message: '✅ Registered! Please check your email to verify your account.'
@@ -39,6 +42,7 @@ exports.registerUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 // 🔐 Login
