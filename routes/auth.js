@@ -1,19 +1,18 @@
 const express = require('express');
-const sendEmail = require('../utils/sendEmail');
 const router = express.Router();
+const passport = require('passport');
+const sendEmail = require('../utils/sendEmail');
 const { registerUser, loginUser } = require('../controllers/authController');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
-const authLimiter = require('../middleware/rateLimiter');
 const crypto = require('crypto');
+const authLimiter = require('../middleware/rateLimiter');
 
-// 🔐 Register (with rate limiting)
+// 🔐 Register & Login
 router.post('/register', authLimiter, registerUser);
-
-// 🔐 Login
 router.post('/login', loginUser);
 
-// 💌 Forgot Password - send reset link
+// 💌 Forgot Password
 router.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
 
@@ -47,6 +46,7 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({ message: '❌ Server error' });
   }
 });
+
 // ✅ Email Verification
 router.get('/verify-email', async (req, res) => {
   const { token, email } = req.query;
@@ -65,7 +65,7 @@ router.get('/verify-email', async (req, res) => {
     res.status(500).send('❌ Server error');
   }
 });
-// ✅ Email Verification Route
+
 router.post('/verify-email', async (req, res) => {
   const { email, token } = req.body;
 
@@ -83,6 +83,7 @@ router.post('/verify-email', async (req, res) => {
     res.status(500).json({ message: '❌ Server error during verification' });
   }
 });
+
 router.post('/resend-verification', async (req, res) => {
   const { email } = req.body;
 
@@ -105,5 +106,20 @@ router.post('/resend-verification', async (req, res) => {
   }
 });
 
-module.exports = router;
 
+// 🟢 Google OAuth: Redirect
+router.get('/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}));
+
+// 🟢 Google OAuth: Callback
+router.get('/google/callback', passport.authenticate('google', {
+  failureRedirect: '/index.html',
+  session: false
+}), (req, res) => {
+  const { user, token } = req.user;
+  const redirectUrl = `https://modenova.co.ke/index.html?token=${token}&name=${encodeURIComponent(user.name)}`;
+  res.redirect(redirectUrl);
+});
+
+module.exports = router;
