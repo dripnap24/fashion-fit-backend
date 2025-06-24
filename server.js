@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
-
+const webauthnRoutes = require('./routes/webauthn');
 dotenv.config();
 
 const app = express();
@@ -11,7 +11,7 @@ app.use(express.json());
 
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
-
+app.use('/api/webauthn', webauthnRoutes);
 app.get('/', (req, res) => {
   res.send('💡 Fashion Fit Backend Running...');
 });
