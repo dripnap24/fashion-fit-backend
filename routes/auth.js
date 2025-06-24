@@ -7,6 +7,9 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const authLimiter = require('../middleware/rateLimiter');
+const { googleAuth } = require('../controllers/authController');
+
+router.post('/google', googleAuth);
 
 // 🔐 Register & Login
 router.post('/register', authLimiter, registerUser);
