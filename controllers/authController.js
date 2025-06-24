@@ -3,15 +3,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// 🔐 JWT Generator
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+// 🔐 Register
 exports.registerUser = async (req, res) => {
   const { name, username, email, password } = req.body;
 
   try {
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: 'User already exists' });
+    if (await User.findOne({ email }))
+      return res.status(400).json({ message: 'User already exists' });
 
-    const usernameExists = await User.findOne({ username });
-    if (usernameExists) return res.status(400).json({ message: 'Username already taken' });
+    if (await User.findOne({ username }))
+      return res.status(400).json({ message: 'Username already taken' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -31,11 +40,9 @@ exports.registerUser = async (req, res) => {
       '🔐 Verify Your Fashion Fit Email',
       `Click the link below to verify your email:\n${verifyUrl}`
     );
-    console.log(`✅ Verification email sent to ${email}`);
 
-    res.status(201).json({
-      message: '✅ Registered! Please check your email to verify your account.'
-    });
+    console.log(`✅ Verification email sent to ${email}`);
+    res.status(201).json({ message: '✅ Registered! Please check your email to verify your account.' });
 
   } catch (err) {
     console.error("Register error:", err);
@@ -43,21 +50,21 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-
-
 // 🔐 Login
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!user)
+      return res.status(400).json({ message: 'Invalid credentials' });
 
-    // 👇 Check if email is verified
-    if (!user.isVerified) return res.status(403).json({ message: 'Please verify your email before logging in.' });
+    if (!user.isVerified)
+      return res.status(403).json({ message: 'Please verify your email before logging in.' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!isMatch)
+      return res.status(400).json({ message: 'Invalid credentials' });
 
     res.json({
       _id: user._id,
@@ -71,15 +78,7 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-
-// 🔐 JWT Generator
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-};
 // 🔐 Google Auth
-const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 exports.googleAuth = async (req, res) => {
   try {
     const { token } = req.body;
@@ -93,7 +92,7 @@ exports.googleAuth = async (req, res) => {
 
     let user = await User.findOne({ email });
 
-    // If user doesn't exist, create them with isVerified false
+    // 👉 New user (first time with Google)
     if (!user) {
       const verificationToken = crypto.randomBytes(32).toString('hex');
 
@@ -106,7 +105,7 @@ exports.googleAuth = async (req, res) => {
         verificationToken
       });
 
-      const verifyUrl = `https://modenova.co.ke/verify.html?token=${user.verificationToken}&email=${email}`;
+      const verifyUrl = `https://modenova.co.ke/verify.html?token=${verificationToken}&email=${email}`;
       await sendEmail(
         email,
         '🔐 Verify Your Fashion Fit Email',
@@ -116,7 +115,7 @@ exports.googleAuth = async (req, res) => {
       return res.status(403).json({ message: '⚠️ Verification email sent. Please check your inbox.' });
     }
 
-    // If user exists but not verified
+    // 👉 Existing user but not verified
     if (!user.isVerified) {
       if (!user.verificationToken) {
         user.verificationToken = crypto.randomBytes(32).toString('hex');
@@ -130,10 +129,10 @@ exports.googleAuth = async (req, res) => {
         `Please verify your email by clicking:\n${verifyUrl}`
       );
 
-      return res.status(403).json({ message: '⚠️ Verification email sent. Please check your inbox.' });
+      return res.status(403).json({ message: '⚠️ Verification email resent. Please check your inbox.' });
     }
 
-    // If verified, generate JWT
+    // ✅ Verified user
     const jwtToken = generateToken(user._id);
     res.json({ token: jwtToken });
 
@@ -142,4 +141,5 @@ exports.googleAuth = async (req, res) => {
     res.status(400).json({ message: 'Google login failed.' });
   }
 };
+
 
