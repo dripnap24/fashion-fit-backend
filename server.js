@@ -10,7 +10,7 @@ require('./config/passport'); // ✅ Google OAuth config
 
 dotenv.config();
 const app = express();
-app.use('/uploads', express.static('uploads'));
+
 
 // 🌐 Middleware
 app.use(cors());
@@ -29,7 +29,6 @@ const webauthnRoutes = require('./routes/webauthn');
 app.use('/api/auth', authRoutes);
 app.use('/api/webauthn', webauthnRoutes);
 
-app.use('/api', require('./routes/suggestOutfit'));
 
 
 // 🌍 Root Test
